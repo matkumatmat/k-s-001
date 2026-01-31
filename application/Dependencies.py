@@ -1,6 +1,8 @@
 from __future__ import annotations
 from fastapi import Depends
+from infrastructure.persistence.redis.connection import RedisConnection
 from infrastructure.persistence.postgresql.connection import DatabaseConnection
+from infrastructure.persistence.redis.RedisLogRepository import RedisLogRepository
 from infrastructure.persistence.uow.PostgresUnitOfWork import PostgresUnitOfWork
 from infrastructure.services.AuthenticationService import AuthenticationService
 from application.OtpApplication.Dependencies import getOtpService
@@ -23,6 +25,9 @@ async def getAuthenticationService(
     sessionService: SessionStorageService = Depends(getSessionStorageService)
 ) -> AuthenticationService:
 
+    redis = await RedisConnection.get_client()
+    log_repo = RedisLogRepository(redis)
+
     async def uow_factory():
         db_session = DatabaseConnection.get_session_factory()()
         return PostgresUnitOfWork(db_session)
@@ -30,7 +35,8 @@ async def getAuthenticationService(
     return AuthenticationService(
         uow_factory=uow_factory,
         otp_service=otpService,
-        session_service=sessionService
+        session_service=sessionService,
+        log_repo=log_repo
     )
 
 async def get_current_session(

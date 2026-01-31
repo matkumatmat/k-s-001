@@ -2,6 +2,7 @@ from __future__ import annotations
 from infrastructure.persistence.redis.connection import RedisConnection
 from infrastructure.persistence.postgresql.connection import DatabaseConnection
 from infrastructure.persistence.redis.RedisSessionRepository import RedisSessionRepository
+from infrastructure.persistence.redis.RedisLogRepository import RedisLogRepository
 from infrastructure.persistence.uow.PostgresUnitOfWork import PostgresUnitOfWork
 from infrastructure.services.SessionStorageService import SessionStorageService
 from typing import TYPE_CHECKING
@@ -41,6 +42,7 @@ def getUowFactory(session: AsyncSession):
 async def getSessionStorageService() -> SessionStorageService:
     redis = await RedisConnection.get_client()
     redis_repo = RedisSessionRepository(redis)
+    log_repo = RedisLogRepository(redis)
 
     async def uow_factory():
         db_session = DatabaseConnection.get_session_factory()()
@@ -48,5 +50,6 @@ async def getSessionStorageService() -> SessionStorageService:
 
     return SessionStorageService(
         redis_repo=redis_repo,
-        uow_factory=uow_factory
+        uow_factory=uow_factory,
+        log_repo=log_repo
     )

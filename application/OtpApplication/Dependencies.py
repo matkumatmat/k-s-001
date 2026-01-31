@@ -2,6 +2,7 @@ from __future__ import annotations
 from infrastructure.persistence.redis.connection import RedisConnection
 from infrastructure.persistence.postgresql.connection import DatabaseConnection
 from infrastructure.persistence.redis.RedisOtpRepository import RedisOtpRepository
+from infrastructure.persistence.redis.RedisLogRepository import RedisLogRepository
 from infrastructure.persistence.uow.PostgresUnitOfWork import PostgresUnitOfWork
 from infrastructure.services.OtpService import OtpService
 from infrastructure.messaging.ConsoleMessageProvider import ConsoleMessageProvider
@@ -10,6 +11,7 @@ from infrastructure.messaging.ConsoleMessageProvider import ConsoleMessageProvid
 async def getOtpService() -> OtpService:
     redis = await RedisConnection.get_client()
     redis_repo = RedisOtpRepository(redis)
+    log_repo = RedisLogRepository(redis)
 
     async def uow_factory():
         db_session = DatabaseConnection.get_session_factory()()
@@ -20,5 +22,6 @@ async def getOtpService() -> OtpService:
     return OtpService(
         redis_repo=redis_repo,
         uow_factory=uow_factory,
-        message_provider=message_provider
+        message_provider=message_provider,
+        log_repo=log_repo
     )

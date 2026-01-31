@@ -4,14 +4,16 @@ from datetime import datetime, UTC
 from typing import TYPE_CHECKING
 from domain.client.DeviceFingerprintVO import DeviceFingerprintVO
 from domain.client.UserSessionFactory import UserSessionFactory
+from domain.logging.LogFactory import LogFactory
 
 if TYPE_CHECKING:
     from domain.client.UserMetadataDomain import UserMetadataDomain
     from domain.client.UserSessionDomain import UserSessionDomain
     from infrastructure.persistence.redis.RedisSessionRepository import RedisSessionRepository
+    from infrastructure.persistence.redis.RedisLogRepository import RedisLogRepository
     from uuid import UUID
     from fastapi import BackgroundTasks
-    
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,10 +22,12 @@ class SessionStorageService:
     def __init__(
         self,
         redis_repo: RedisSessionRepository,
-        uow_factory: callable
+        uow_factory: callable,
+        log_repo: RedisLogRepository
     ):
         self.redis_repo = redis_repo
         self.uow_factory = uow_factory
+        self.log_repo = log_repo
 
     async def create_session(
         self,
@@ -45,6 +49,24 @@ class SessionStorageService:
             session,
             operation="create"
         )
+
+        # Log session creation
+        try:
+            log = LogFactory.create_session_log(
+                user_id=user_id,
+                action="SESSION_CREATED",
+                message=f"New session created for user {user_id}",
+                metadata={
+                    "session_id": str(session.sid),
+                    "device_type": metadata.device_type.value,
+                    "ip_address": metadata.ip_address,
+                    "region": metadata.region,
+                    "expires_at": session.expiry.isoformat()
+                }
+            )
+            await self.log_repo.push(log)
+        except Exception as e:
+            logger.warning(f"Failed to log session creation: {e}")
 
         return session
 
@@ -77,13 +99,60 @@ class SessionStorageService:
     ) -> UserSessionDomain | None:
         session = await self.get_session_by_token(active_token)
         if session is None:
+            # Log validation failure - session not found
+            try:
+                log = LogFactory.create_session_log(
+                    user_id=None,
+                    action="SESSION_VALIDATION_FAILED",
+                    message="Session validation failed: session not found",
+                    metadata={
+                        "reason": "session_not_found",
+                        "ip_address": incoming_metadata.ip_address
+                    }
+                )
+                await self.log_repo.push(log)
+            except Exception as e:
+                logger.warning(f"Failed to log validation failure: {e}")
             return None
 
         incoming_fingerprint = DeviceFingerprintVO.from_metadata(incoming_metadata)
         current_time = datetime.now(UTC)
 
         if not session.is_valid_session(current_time, incoming_fingerprint):
+            # Log validation failure - invalid session or fingerprint mismatch
+            reason = "expired" if session.expiry < current_time else "fingerprint_mismatch"
+            try:
+                log = LogFactory.create_session_log(
+                    user_id=session.user_id,
+                    action="SESSION_VALIDATION_FAILED",
+                    message=f"Session validation failed: {reason}",
+                    metadata={
+                        "session_id": str(session.sid),
+                        "reason": reason,
+                        "ip_address": incoming_metadata.ip_address,
+                        "device_type": incoming_metadata.device_type.value
+                    }
+                )
+                await self.log_repo.push(log)
+            except Exception as e:
+                logger.warning(f"Failed to log validation failure: {e}")
             return None
+
+        # Log successful validation
+        try:
+            log = LogFactory.create_session_log(
+                user_id=session.user_id,
+                action="SESSION_VALIDATED",
+                message=f"Session validated successfully for user {session.user_id}",
+                metadata={
+                    "session_id": str(session.sid),
+                    "ip_address": incoming_metadata.ip_address,
+                    "device_type": incoming_metadata.device_type.value
+                }
+            )
+            await self.log_repo.push(log)
+        except Exception as e:
+            logger.warning(f"Failed to log validation success: {e}")
 
         return session
 
@@ -98,10 +167,36 @@ class SessionStorageService:
                 session = await uow.sessions.get_by_refresh_token(refresh_token)
 
         if session is None:
+            # Log refresh failure - session not found
+            try:
+                log = LogFactory.create_session_log(
+                    user_id=None,
+                    action="SESSION_REFRESH_FAILED",
+                    message="Session refresh failed: session not found",
+                    metadata={"reason": "session_not_found"}
+                )
+                await self.log_repo.push(log)
+            except Exception as e:
+                logger.warning(f"Failed to log refresh failure: {e}")
             return None
 
         current_time = datetime.now(UTC)
         if not session.can_refresh(current_time):
+            # Log refresh failure - session expired
+            try:
+                log = LogFactory.create_session_log(
+                    user_id=session.user_id,
+                    action="SESSION_REFRESH_FAILED",
+                    message="Session refresh failed: session expired",
+                    metadata={
+                        "session_id": str(session.sid),
+                        "reason": "expired",
+                        "expiry": session.expiry.isoformat()
+                    }
+                )
+                await self.log_repo.push(log)
+            except Exception as e:
+                logger.warning(f"Failed to log refresh failure: {e}")
             return None
 
         session.regenerate_tokens()
@@ -114,6 +209,21 @@ class SessionStorageService:
             operation="update"
         )
 
+        # Log successful refresh
+        try:
+            log = LogFactory.create_session_log(
+                user_id=session.user_id,
+                action="SESSION_REFRESHED",
+                message=f"Session refreshed successfully for user {session.user_id}",
+                metadata={
+                    "session_id": str(session.sid),
+                    "new_expiry": session.expiry.isoformat()
+                }
+            )
+            await self.log_repo.push(log)
+        except Exception as e:
+            logger.warning(f"Failed to log refresh success: {e}")
+
         return session
 
     async def revoke_session(
@@ -121,12 +231,29 @@ class SessionStorageService:
         sid: UUID,
         background_tasks: BackgroundTasks
     ) -> bool:
+        # Get session before deletion to log user_id
+        session = await self.redis_repo.get_by_id(sid)
+        user_id = session.user_id if session else None
+
         deleted = await self.redis_repo.delete(sid)
 
         background_tasks.add_task(
             self._sync_to_postgres_delete,
             sid
         )
+
+        # Log session revocation
+        if deleted:
+            try:
+                log = LogFactory.create_session_log(
+                    user_id=user_id,
+                    action="SESSION_REVOKED",
+                    message=f"Session {sid} revoked",
+                    metadata={"session_id": str(sid)}
+                )
+                await self.log_repo.push(log)
+            except Exception as e:
+                logger.warning(f"Failed to log session revocation: {e}")
 
         return deleted
 
@@ -141,6 +268,21 @@ class SessionStorageService:
             self._sync_to_postgres_delete_all,
             user_id
         )
+
+        # Log all sessions revocation
+        try:
+            log = LogFactory.create_session_log(
+                user_id=user_id,
+                action="ALL_SESSIONS_REVOKED",
+                message=f"All sessions revoked for user {user_id}",
+                metadata={
+                    "user_id": str(user_id),
+                    "sessions_count": count
+                }
+            )
+            await self.log_repo.push(log)
+        except Exception as e:
+            logger.warning(f"Failed to log all sessions revocation: {e}")
 
         return count
 
