@@ -1,8 +1,11 @@
 from __future__ import annotations
 import os
-from _collections_abc import AsyncGenerator
 from redis.asyncio import Redis, ConnectionPool
 from dotenv import load_dotenv
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from _collections_abc import AsyncGenerator
 
 load_dotenv()
 

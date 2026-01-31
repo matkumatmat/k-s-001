@@ -1,11 +1,13 @@
 from __future__ import annotations
-from datetime import datetime, timezone
-from uuid import UUID
-from domain.client.UserSessionDomain import UserSessionDomain
+from datetime import datetime, UTC
 from domain.client.UserMetadataDomain import UserMetadataDomain
 from domain.client.DeviceFingerprintVO import DeviceFingerprintVO
 from domain.client.UserSessionFactory import UserSessionFactory
 from infrastructure.persistence.postgresql.models.SessionModel import SessionModel
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.client.UserSessionDomain import UserSessionDomain
 
 
 class SessionMapper:
@@ -26,7 +28,7 @@ class SessionMapper:
             metadata_devices_length=domain.metadata.devices_length,
             metadata_region=domain.metadata.region,
             metadata_lang=domain.metadata.lang,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             updated_at=None,
             deleted=False,
             deleted_at=None
@@ -69,5 +71,5 @@ class SessionMapper:
         model.metadata_devices_length = domain.metadata.devices_length
         model.metadata_region = domain.metadata.region
         model.metadata_lang = domain.metadata.lang
-        model.updated_at = datetime.now(timezone.utc)
+        model.updated_at = datetime.now(UTC)
         return model

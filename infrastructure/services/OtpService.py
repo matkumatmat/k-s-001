@@ -1,17 +1,16 @@
 from __future__ import annotations
 import logging
 import os
-from datetime import datetime, timezone
-from uuid import UUID
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING
-from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
 from domain.management.OtpAuthenticationFactory import OtpAuthenticationFactory
-from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
-from infrastructure.persistence.redis.RedisOtpRepository import RedisOtpRepository
-from infrastructure.persistence.uow.IUnitOfWork import IUnitOfWork
-from infrastructure.messaging.IMessageProvider import IMessageProvider
 
 if TYPE_CHECKING:
+    from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
+    from infrastructure.messaging.IMessageProvider import IMessageProvider
+    from infrastructure.persistence.redis.RedisOtpRepository import RedisOtpRepository
+    from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
+    from uuid import UUID
     from fastapi import BackgroundTasks
 
 logger = logging.getLogger(__name__)
@@ -85,7 +84,7 @@ class OtpService:
         if otp is None:
             return None
 
-        current_time = datetime.now(timezone.utc)
+        current_time = datetime.now(UTC)
 
         if otp.is_expired(current_time):
             return None

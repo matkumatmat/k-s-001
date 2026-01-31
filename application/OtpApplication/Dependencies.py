@@ -1,5 +1,4 @@
 from __future__ import annotations
-from redis.asyncio import Redis
 from infrastructure.persistence.redis.connection import RedisConnection
 from infrastructure.persistence.postgresql.connection import DatabaseConnection
 from infrastructure.persistence.redis.RedisOtpRepository import RedisOtpRepository

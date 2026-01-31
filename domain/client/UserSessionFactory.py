@@ -1,9 +1,12 @@
 from __future__ import annotations
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from uuid import UUID, uuid4
 from domain.client.UserSessionDomain import UserSessionDomain
-from domain.client.UserMetadataDomain import UserMetadataDomain
 from domain.client.DeviceFingerprintVO import DeviceFingerprintVO
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.client.UserMetadataDomain import UserMetadataDomain
 
 
 class UserSessionFactory:
@@ -14,7 +17,7 @@ class UserSessionFactory:
         metadata: UserMetadataDomain,
         session_duration_days: int = 30
     ) -> UserSessionDomain:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expiry = now + timedelta(days=session_duration_days)
         fingerprint = DeviceFingerprintVO.from_metadata(metadata)
 
@@ -56,7 +59,7 @@ class UserSessionFactory:
         metadata: UserMetadataDomain,
         expiry_duration: timedelta
     ) -> UserSessionDomain:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expiry = now + expiry_duration
         fingerprint = DeviceFingerprintVO.from_metadata(metadata)
 

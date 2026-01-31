@@ -1,12 +1,15 @@
 from __future__ import annotations
-from typing import AsyncGenerator
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
-from infrastructure.persistence.redis.connection import get_redis_client, RedisConnection
-from infrastructure.persistence.postgresql.connection import get_db_session, DatabaseConnection
+from infrastructure.persistence.redis.connection import RedisConnection
+from infrastructure.persistence.postgresql.connection import DatabaseConnection
 from infrastructure.persistence.redis.RedisSessionRepository import RedisSessionRepository
 from infrastructure.persistence.uow.PostgresUnitOfWork import PostgresUnitOfWork
 from infrastructure.services.SessionStorageService import SessionStorageService
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from redis.asyncio import Redis
+    from collections.abc import AsyncGenerator
 
 
 async def getRedisClient() -> AsyncGenerator[Redis, None]:

@@ -1,21 +1,21 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from uuid import uuid4
-from application.RegistrationApplication.schema.RegistrationRequestSchema import (
-    RegisterRequest,
-    VerifyRegistrationRequest
-)
 from application.RegistrationApplication.schema.RegistrationResponseSchema import (
     RegisterResponse,
     VerifyRegistrationResponse,
     RegistrationOtpInfo
 )
-from application.OtpApplication.Dependencies import getOtpService
-from application.SessionApplication.Dependencies import getSessionStorageService
-from infrastructure.services.OtpService import OtpService
-from infrastructure.services.SessionStorageService import SessionStorageService
-from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
+from application.Dependencies import getAuthenticationService
+from domain.management.ValueObject import AuthenticationProvider
 from domain.client.UserMetadataDomain import UserMetadataDomain
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infrastructure.services.AuthenticationService import AuthenticationService
+    from application.RegistrationApplication.schema.RegistrationRequestSchema import (
+        RegisterRequest,
+        VerifyRegistrationRequest
+    )
 
 router = APIRouter(prefix="/registration", tags=["Registration"])
 
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/registration", tags=["Registration"])
 async def registerUser(
     request: RegisterRequest,
     backgroundTasks: BackgroundTasks,
-    otpService: OtpService = Depends(getOtpService)
+    authService: AuthenticationService = Depends(getAuthenticationService)
 ):
     if not request.email and not request.phone:
         raise HTTPException(
@@ -48,22 +48,30 @@ async def registerUser(
             detail=f"Delivery target not provided for method {delivery_method.value}"
         )
 
-    temp_user_id = uuid4()
-
-    otp = await otpService.createOtp(
-        delivery_target=delivery_target,
-        delivery_method=delivery_method,
-        purpose=AuthenticationOtpPurpose.REGISTRATION,
-        merchant_id=request.merchantId,
-        background_tasks=backgroundTasks,
-        user_id=temp_user_id,
-        identifier=request.username
-    )
+    try:
+        otp = await authService.register_user(
+            username=request.username,
+            password=request.password,
+            email=request.email,
+            phone=request.phone,
+            first_name=request.firstName,
+            last_name=request.lastName,
+            delivery_method=delivery_method,
+            delivery_target=delivery_target,
+            merchant_id=request.merchantId,
+            metadata_info=request.metadata.model_dump(by_alias=True),
+            background_tasks=backgroundTasks
+        )
+    except ValueError as e:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
     return RegisterResponse(
         success=True,
         message=f"OTP sent to {delivery_target}",
-        user_id=temp_user_id,
+        user_id=otp.user_id,
         delivery_target=delivery_target,
         otp_info=RegistrationOtpInfo(
             otp_code=otp.otp_code,
@@ -77,48 +85,8 @@ async def registerUser(
 async def verifyRegistration(
     request: VerifyRegistrationRequest,
     backgroundTasks: BackgroundTasks,
-    otpService: OtpService = Depends(getOtpService),
-    sessionService: SessionStorageService = Depends(getSessionStorageService)
+    authService: AuthenticationService = Depends(getAuthenticationService)
 ):
-    otp = await otpService.verifyOtp(
-        otp_code=request.otpCode,
-        delivery_target=request.deliveryTarget,
-        background_tasks=backgroundTasks
-    )
-
-    if otp is None:
-        return VerifyRegistrationResponse(
-            success=False,
-            message="Invalid or expired OTP",
-            user_id=None,
-            active_token=None,
-            refresh_token=None,
-            device_fingerprint=None,
-            expires_at=None
-        )
-
-    if otp.purpose != AuthenticationOtpPurpose.REGISTRATION:
-        return VerifyRegistrationResponse(
-            success=False,
-            message="OTP not valid for registration",
-            user_id=None,
-            active_token=None,
-            refresh_token=None,
-            device_fingerprint=None,
-            expires_at=None
-        )
-
-    if not otp.user_id:
-        return VerifyRegistrationResponse(
-            success=False,
-            message="Invalid OTP data",
-            user_id=None,
-            active_token=None,
-            refresh_token=None,
-            device_fingerprint=None,
-            expires_at=None
-        )
-
     metadata = UserMetadataDomain(
         user_agent=request.metadata.userAgent,
         devices_width=request.metadata.devicesWidth,
@@ -128,17 +96,28 @@ async def verifyRegistration(
         lang=request.metadata.lang
     )
 
-    session = await sessionService.create_session(
-        user_id=otp.user_id,
+    session = await authService.verify_registration(
+        otp_code=request.otpCode,
+        delivery_target=request.deliveryTarget,
         metadata=metadata,
-        background_tasks=backgroundTasks,
-        session_duration_days=30
+        background_tasks=backgroundTasks
     )
+
+    if session is None:
+        return VerifyRegistrationResponse(
+            success=False,
+            message="Invalid or expired OTP, or verification failed",
+            user_id=None,
+            active_token=None,
+            refresh_token=None,
+            device_fingerprint=None,
+            expires_at=None
+        )
 
     return VerifyRegistrationResponse(
         success=True,
         message="Registration verified successfully",
-        user_id=otp.user_id,
+        user_id=session.user_id,
         active_token=session.active_token,
         refresh_token=session.refresh_token,
         device_fingerprint=session.device_fingerprint.encoded,

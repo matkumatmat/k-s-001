@@ -1,12 +1,15 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from uuid import UUID
-from application.OtpApplication.schema.OtpRequestSchema import SendOtpRequest, VerifyOtpRequest
 from application.OtpApplication.schema.OtpResponseSchema import OtpResponse, VerifyOtpResponse
 from application.OtpApplication.Dependencies import getOtpService
-from infrastructure.services.OtpService import OtpService
-from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
 from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
+    from infrastructure.services.OtpService import OtpService
+    from application.OtpApplication.schema.OtpRequestSchema import SendOtpRequest, VerifyOtpRequest
+    from uuid import UUID
 
 router = APIRouter(prefix="/otp", tags=["OTP"])
 
@@ -35,7 +38,7 @@ async def sendOtp(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid delivery method or purpose: {str(e)}"
+            detail=f"Invalid delivery method or purpose: {e!s}"
         )
 
     otp = await service.createOtp(

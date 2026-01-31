@@ -1,10 +1,5 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from uuid import UUID
-
 
 class MetadataRequest(BaseModel):
     userAgent: str = Field(..., alias="user_agent", min_length=1)
@@ -17,26 +12,18 @@ class MetadataRequest(BaseModel):
     class Config:
         populate_by_name = True
 
-
-class CreateSessionRequest(BaseModel):
-    userId: UUID = Field(..., alias="user_id")
-    metadata: MetadataRequest
-    sessionDurationDays: int = Field(default=30, alias="session_duration_days", ge=1, le=365)
-
-    class Config:
-        populate_by_name = True
-
-
-class ValidateSessionRequest(BaseModel):
-    activeToken: str = Field(..., alias="active_token", min_length=1)
+class LoginRequest(BaseModel):
+    identifier: str = Field(..., min_length=3, description="Username or Email")
+    password: str = Field(..., min_length=1)
     metadata: MetadataRequest
 
     class Config:
         populate_by_name = True
 
-
-class RefreshSessionRequest(BaseModel):
-    refreshToken: str = Field(..., alias="refresh_token", min_length=1)
+class TokenLoginRequest(BaseModel):
+    accessToken: str = Field(..., alias="access_token", min_length=1)
+    deviceFingerprint: str = Field(..., alias="device_fingerprint", min_length=1)
+    metadata: MetadataRequest
 
     class Config:
         populate_by_name = True

@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import String, Integer, DateTime, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from typing import TYPE_CHECKING
 
 
 class Base(DeclarativeBase):

@@ -1,10 +1,13 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from uuid import UUID
-from datetime import datetime, timedelta
 import secrets
-from domain.client.UserMetadataDomain import UserMetadataDomain
-from domain.client.DeviceFingerprintVO import DeviceFingerprintVO
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.client.DeviceFingerprintVO import DeviceFingerprintVO
+    from domain.client.UserMetadataDomain import UserMetadataDomain
+    from datetime import datetime, timedelta
+    from uuid import UUID
 
 
 @dataclass

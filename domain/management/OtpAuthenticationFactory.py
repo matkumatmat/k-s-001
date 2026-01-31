@@ -1,9 +1,12 @@
 from __future__ import annotations
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from uuid import UUID, uuid4
 from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
-from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
 
 
 class OtpAuthenticationFactory:
@@ -27,7 +30,7 @@ class OtpAuthenticationFactory:
     ) -> ManagementOtpDomain:
         otp_code = OtpAuthenticationFactory.generateOtpCode(code_length)
         otp_url = url_prefix.format(code=otp_code)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired_at = now + timedelta(seconds=expiry_seconds)
 
         return ManagementOtpDomain(

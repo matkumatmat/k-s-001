@@ -1,13 +1,16 @@
 from __future__ import annotations
 import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from uuid import UUID
-from redis.asyncio import Redis
 from domain.client.ISessionRepository import ISessionRepository
-from domain.client.UserSessionDomain import UserSessionDomain
 from domain.client.UserMetadataDomain import UserMetadataDomain
 from domain.client.DeviceFingerprintVO import DeviceFingerprintVO
 from domain.client.UserSessionFactory import UserSessionFactory
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.client.UserSessionDomain import UserSessionDomain
+    from redis.asyncio import Redis
 
 
 class RedisSessionRepository(ISessionRepository):
@@ -71,7 +74,7 @@ class RedisSessionRepository(ISessionRepository):
         )
 
     async def create(self, session: UserSessionDomain) -> UserSessionDomain:
-        ttl = session.ttl_seconds(datetime.now(timezone.utc))
+        ttl = session.ttl_seconds(datetime.now(UTC))
         if ttl <= 0:
             raise ValueError("Cannot create expired session")
 

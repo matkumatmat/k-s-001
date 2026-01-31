@@ -1,9 +1,12 @@
 from __future__ import annotations
-from datetime import datetime, timezone
-from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
+from datetime import datetime, UTC
 from domain.management.OtpAuthenticationFactory import OtpAuthenticationFactory
 from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
 from infrastructure.persistence.postgresql.models.OtpModel import OtpModel
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
 
 
 class OtpMapper:
@@ -65,7 +68,7 @@ class OtpMapper:
         model.merchant_id = domain.merchant_id
         model.used = domain.used
         model.used_at = domain.used_at
-        model.updated_at = datetime.now(timezone.utc)
+        model.updated_at = datetime.now(UTC)
         model.user_id = domain.user_id
         model.identifier = domain.identifier
         model.behaviour_logs = domain.behaviour_logs
