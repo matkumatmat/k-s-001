@@ -3,12 +3,14 @@ from infrastructure.persistence.uow.IUnitOfWork import IUnitOfWork
 from infrastructure.persistence.postgresql.repositories.PostgresSessionRepository import PostgresSessionRepository
 from infrastructure.persistence.postgresql.repositories.PostgresOtpRepository import PostgresOtpRepository
 from infrastructure.persistence.postgresql.repositories.PostgresUserRepository import PostgresUserRepository
+from infrastructure.persistence.postgresql.repositories.PostgresLogRepository import PostgresLogRepository
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from domain.client.IUserRepository import IUserRepository
     from domain.management.IOtpRepository import IOtpRepository
     from domain.client.ISessionRepository import ISessionRepository
+    from domain.logging.ILogRepository import ILogStorageRepository
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -19,6 +21,7 @@ class PostgresUnitOfWork(IUnitOfWork):
         self._sessions: ISessionRepository | None = None
         self._otps: IOtpRepository | None = None
         self._users: IUserRepository | None = None
+        self._logs: ILogStorageRepository | None = None
 
     @property
     def sessions(self) -> ISessionRepository:
@@ -37,6 +40,12 @@ class PostgresUnitOfWork(IUnitOfWork):
         if self._users is None:
             self._users = PostgresUserRepository(self._session)
         return self._users
+
+    @property
+    def logs(self) -> ILogStorageRepository:
+        if self._logs is None:
+            self._logs = PostgresLogRepository(self._session)
+        return self._logs
 
     async def __aenter__(self):
         return self
