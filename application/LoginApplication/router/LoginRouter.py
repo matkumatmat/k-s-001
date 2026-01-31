@@ -1,8 +1,10 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Response
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Response, Request
 from application.LoginApplication.schema.LoginResponseSchema import LoginResponse
 from application.LoginApplication.schema.LoginRequestSchema import LoginRequest, TokenLoginRequest
 from application.Dependencies import getAuthenticationService
+from application.core.RateLimiter import limiter
+from application.core.SecurityConfig import security_config
 from domain.client.UserMetadataDomain import UserMetadataDomain
 from typing import TYPE_CHECKING
 
@@ -13,24 +15,26 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=LoginResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def login(
-    request: LoginRequest,
+    request: Request,
+    loginRequest: LoginRequest,
     response: Response,
     backgroundTasks: BackgroundTasks,
     authService: AuthenticationService = Depends(getAuthenticationService)
 ):
     metadata = UserMetadataDomain(
-        user_agent=request.metadata.userAgent,
-        devices_width=request.metadata.devicesWidth,
-        devices_length=request.metadata.devicesLength,
-        ip_address=request.metadata.ipAddress,
-        region=request.metadata.region,
-        lang=request.metadata.lang
+        user_agent=loginRequest.metadata.userAgent,
+        devices_width=loginRequest.metadata.devicesWidth,
+        devices_length=loginRequest.metadata.devicesLength,
+        ip_address=loginRequest.metadata.ipAddress,
+        region=loginRequest.metadata.region,
+        lang=loginRequest.metadata.lang
     )
 
     session = await authService.login(
-        identifier=request.identifier,
-        password=request.password,
+        identifier=loginRequest.identifier,
+        password=loginRequest.password,
         metadata=metadata,
         background_tasks=backgroundTasks
     )
@@ -62,22 +66,24 @@ async def login(
 
 
 @router.post("/login/token", response_model=LoginResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def loginByToken(
-    request: TokenLoginRequest,
+    request: Request,
+    tokenRequest: TokenLoginRequest,
     response: Response,
     authService: AuthenticationService = Depends(getAuthenticationService)
 ):
     metadata = UserMetadataDomain(
-        user_agent=request.metadata.userAgent,
-        devices_width=request.metadata.devicesWidth,
-        devices_length=request.metadata.devicesLength,
-        ip_address=request.metadata.ipAddress,
-        region=request.metadata.region,
-        lang=request.metadata.lang
+        user_agent=tokenRequest.metadata.userAgent,
+        devices_width=tokenRequest.metadata.devicesWidth,
+        devices_length=tokenRequest.metadata.devicesLength,
+        ip_address=tokenRequest.metadata.ipAddress,
+        region=tokenRequest.metadata.region,
+        lang=tokenRequest.metadata.lang
     )
 
     session = await authService.login_by_token(
-        access_token=request.accessToken,
+        access_token=tokenRequest.accessToken,
         metadata=metadata
     )
 
@@ -88,7 +94,7 @@ async def loginByToken(
         )
 
     # Verify fingerprint matches what client claims
-    if request.deviceFingerprint != session.device_fingerprint.encoded:
+    if tokenRequest.deviceFingerprint != session.device_fingerprint.encoded:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Device fingerprint mismatch"

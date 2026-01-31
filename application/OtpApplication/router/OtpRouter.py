@@ -1,9 +1,11 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Security
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from application.OtpApplication.schema.OtpResponseSchema import OtpResponse, VerifyOtpResponse
 from application.OtpApplication.schema.OtpRequestSchema import SendOtpRequest, VerifyOtpRequest
 from application.OtpApplication.Dependencies import getOtpService
+from application.core.RateLimiter import limiter
+from application.core.SecurityConfig import security_config
 from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
 from uuid import UUID
 from typing import TYPE_CHECKING
@@ -30,14 +32,16 @@ def _mapOtpResponse(otp: ManagementOtpDomain) -> OtpResponse:
 
 
 @router.post("/send", response_model=OtpResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(security_config.RATE_LIMIT_OTP)
 async def sendOtp(
-    request: SendOtpRequest,
+    request: Request,
+    otpRequest: SendOtpRequest,
     backgroundTasks: BackgroundTasks,
     service: OtpService = Depends(getOtpService)
 ):
     try:
-        delivery_method = AuthenticationProvider(request.deliveryMethod)
-        purpose = AuthenticationOtpPurpose(request.purpose)
+        delivery_method = AuthenticationProvider(otpRequest.deliveryMethod)
+        purpose = AuthenticationOtpPurpose(otpRequest.purpose)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -45,27 +49,29 @@ async def sendOtp(
         )
 
     otp = await service.createOtp(
-        delivery_target=request.deliveryTarget,
+        delivery_target=otpRequest.deliveryTarget,
         delivery_method=delivery_method,
         purpose=purpose,
-        merchant_id=request.merchantId,
+        merchant_id=otpRequest.merchantId,
         background_tasks=backgroundTasks,
-        user_id=request.userId,
-        identifier=request.identifier
+        user_id=otpRequest.userId,
+        identifier=otpRequest.identifier
     )
 
     return _mapOtpResponse(otp)
 
 
 @router.post("/verify", response_model=VerifyOtpResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def verifyOtp(
-    request: VerifyOtpRequest,
+    request: Request,
+    verifyRequest: VerifyOtpRequest,
     backgroundTasks: BackgroundTasks,
     service: OtpService = Depends(getOtpService)
 ):
     otp = await service.verifyOtp(
-        otp_code=request.otpCode,
-        delivery_target=request.deliveryTarget,
+        otp_code=verifyRequest.otpCode,
+        delivery_target=verifyRequest.deliveryTarget,
         background_tasks=backgroundTasks
     )
 
@@ -84,7 +90,9 @@ async def verifyOtp(
 
 
 @router.get("/{sid}", response_model=OtpResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def getOtpById(
+    request: Request,
     sid: UUID,
     service: OtpService = Depends(getOtpService),
     credentials: HTTPAuthorizationCredentials = Security(security)
