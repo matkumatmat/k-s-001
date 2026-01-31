@@ -121,8 +121,8 @@ module = [
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["app/tests"]
-python_files = ["tests_*.py", "*_tests.py"]
+testpaths = ["tests"]
+python_files = ["tests_*.py", "*_tests.py", "test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 markers = [

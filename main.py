@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,10 +11,44 @@ from application.RegistrationApplication.router.RegistrationRouter import router
 from application.LoginApplication.router.LoginRouter import router as login_router
 from infrastructure.persistence.redis.connection import RedisConnection
 from infrastructure.persistence.postgresql.connection import DatabaseConnection
+from infrastructure.persistence.redis.RedisLogRepository import RedisLogRepository
+from infrastructure.persistence.uow.PostgresUnitOfWork import PostgresUnitOfWork
+from infrastructure.services.LogSyncService import LogSyncService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+async def run_background_log_sync():
+    """Background task to sync logs from Redis to PostgreSQL every 30 minutes."""
+    while True:
+        try:
+            # Wait for 30 minutes (1800 seconds)
+            await asyncio.sleep(1800)
+
+            logger.info("Starting scheduled log sync...")
+
+            # Initialize dependencies
+            redis_client = await RedisConnection.get_client()
+            redis_repo = RedisLogRepository(redis_client)
+
+            async def uow_factory():
+                session_factory = DatabaseConnection.get_session_factory()
+                session = session_factory()
+                return PostgresUnitOfWork(session)
+
+            service = LogSyncService(redis_repo, uow_factory)
+            count = await service.sync_logs()
+
+            if count > 0:
+                logger.info(f"Scheduled log sync completed. Synced {count} logs.")
+
+        except asyncio.CancelledError:
+            logger.info("Log sync task cancelled")
+            break
+        except Exception as e:
+            logger.error(f"Error in background log sync: {e}")
+            # Wait a bit before continuing to avoid tight loop on persistent error
+            await asyncio.sleep(60)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,9 +71,20 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to connect to PostgreSQL: {e}")
         raise
 
+    # Start background tasks
+    log_sync_task = asyncio.create_task(run_background_log_sync())
+    logger.info("Background log sync task started")
+
     yield
 
     logger.info("Shutting down application...")
+
+    # Cancel background tasks
+    log_sync_task.cancel()
+    try:
+        await log_sync_task
+    except asyncio.CancelledError:
+        logger.info("Background log sync task stopped")
 
     try:
         await RedisConnection.close_pool()

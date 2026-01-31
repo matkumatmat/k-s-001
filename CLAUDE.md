@@ -220,9 +220,20 @@ CREATE TABLE otp_authentications (
     identifier VARCHAR(255),
     -- Add indexes on: delivery_target, purpose, expired_at, user_id
 );
+
+CREATE TABLE system_logs (
+    id UUID PRIMARY KEY,
+    log_type VARCHAR(50) NOT NULL,
+    action VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    metadata_payload JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    user_id UUID
+    -- Add indexes on: log_type, action, created_at, user_id
+);
 ```
 
-Use Alembic for migrations (already configured in dependencies).
+Use Alembic for migrations (already configured in dependencies), or run `python scripts/init_db.py` to create all tables.
 
 ## API Documentation
 
