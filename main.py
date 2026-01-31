@@ -15,6 +15,10 @@ from infrastructure.persistence.postgresql.connection import DatabaseConnection
 from infrastructure.persistence.redis.RedisLogRepository import RedisLogRepository
 from infrastructure.persistence.uow.PostgresUnitOfWork import PostgresUnitOfWork
 from infrastructure.services.LogSyncService import LogSyncService
+from slowapi.middleware import SlowAPIMiddleware
+from application.core.RateLimiter import limiter
+from application.core.SecurityMiddleware import SecurityHeadersMiddleware
+from application.core.SecurityConfig import security_config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -109,6 +113,14 @@ app = FastAPI(
         "persistAuthorization": True
     }
 )
+
+# Initialize Limiter
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+# Security Headers
+if security_config.SECURE_HEADERS:
+    app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

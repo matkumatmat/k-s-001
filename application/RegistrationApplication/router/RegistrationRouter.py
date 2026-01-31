@@ -1,5 +1,5 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from application.RegistrationApplication.schema.RegistrationResponseSchema import (
     RegisterResponse,
     VerifyRegistrationResponse,
@@ -10,6 +10,8 @@ from application.RegistrationApplication.schema.RegistrationRequestSchema import
     VerifyRegistrationRequest
 )
 from application.Dependencies import getAuthenticationService
+from application.core.RateLimiter import limiter
+from application.core.SecurityConfig import security_config
 from domain.management.ValueObject import AuthenticationProvider
 from domain.client.UserMetadataDomain import UserMetadataDomain
 from typing import TYPE_CHECKING
@@ -21,26 +23,28 @@ router = APIRouter(prefix="/registration", tags=["Registration"])
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(security_config.RATE_LIMIT_OTP)
 async def registerUser(
-    request: RegisterRequest,
+    request: Request,
+    regRequest: RegisterRequest,
     backgroundTasks: BackgroundTasks,
     authService: AuthenticationService = Depends(getAuthenticationService)
 ):
-    if not request.email and not request.phone:
+    if not regRequest.email and not regRequest.phone:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Either email or phone must be provided"
         )
 
     try:
-        delivery_method = AuthenticationProvider(request.deliveryMethod)
+        delivery_method = AuthenticationProvider(regRequest.deliveryMethod)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid delivery method: {request.deliveryMethod}"
+            detail=f"Invalid delivery method: {regRequest.deliveryMethod}"
         )
 
-    delivery_target = request.email if delivery_method == AuthenticationProvider.EMAIL else request.phone
+    delivery_target = regRequest.email if delivery_method == AuthenticationProvider.EMAIL else regRequest.phone
 
     if not delivery_target:
         raise HTTPException(
@@ -50,16 +54,16 @@ async def registerUser(
 
     try:
         otp = await authService.register_user(
-            username=request.username,
-            password=request.password,
-            email=request.email,
-            phone=request.phone,
-            first_name=request.firstName,
-            last_name=request.lastName,
+            username=regRequest.username,
+            password=regRequest.password,
+            email=regRequest.email,
+            phone=regRequest.phone,
+            first_name=regRequest.firstName,
+            last_name=regRequest.lastName,
             delivery_method=delivery_method,
             delivery_target=delivery_target,
-            merchant_id=request.merchantId,
-            metadata_info=request.metadata.model_dump(by_alias=True),
+            merchant_id=regRequest.merchantId,
+            metadata_info=regRequest.metadata.model_dump(by_alias=True),
             background_tasks=backgroundTasks
         )
     except ValueError as e:
@@ -82,23 +86,25 @@ async def registerUser(
 
 
 @router.post("/verify", response_model=VerifyRegistrationResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def verifyRegistration(
-    request: VerifyRegistrationRequest,
+    request: Request,
+    verifyRequest: VerifyRegistrationRequest,
     backgroundTasks: BackgroundTasks,
     authService: AuthenticationService = Depends(getAuthenticationService)
 ):
     metadata = UserMetadataDomain(
-        user_agent=request.metadata.userAgent,
-        devices_width=request.metadata.devicesWidth,
-        devices_length=request.metadata.devicesLength,
-        ip_address=request.metadata.ipAddress,
-        region=request.metadata.region,
-        lang=request.metadata.lang
+        user_agent=verifyRequest.metadata.userAgent,
+        devices_width=verifyRequest.metadata.devicesWidth,
+        devices_length=verifyRequest.metadata.devicesLength,
+        ip_address=verifyRequest.metadata.ipAddress,
+        region=verifyRequest.metadata.region,
+        lang=verifyRequest.metadata.lang
     )
 
     session = await authService.verify_registration(
-        otp_code=request.otpCode,
-        delivery_target=request.deliveryTarget,
+        otp_code=verifyRequest.otpCode,
+        delivery_target=verifyRequest.deliveryTarget,
         metadata=metadata,
         background_tasks=backgroundTasks
     )

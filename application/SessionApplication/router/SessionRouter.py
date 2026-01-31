@@ -1,5 +1,5 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Security
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from application.SessionApplication.schema.SessionResponseSchema import (
     SessionResponse,
@@ -15,6 +15,8 @@ from application.SessionApplication.schema.SessionRequestSchema import (
     RefreshSessionRequest
 )
 from application.SessionApplication.Dependencies import getSessionStorageService
+from application.core.RateLimiter import limiter
+from application.core.SecurityConfig import security_config
 from domain.client.UserMetadataDomain import UserMetadataDomain
 from uuid import UUID
 from typing import TYPE_CHECKING
@@ -62,46 +64,50 @@ def _mapTokenResponse(session: UserSessionDomain) -> SessionTokenResponse:
 
 
 @router.post("/", response_model=SessionTokenResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def createSession(
-    request: CreateSessionRequest,
+    request: Request,
+    createRequest: CreateSessionRequest,
     backgroundTasks: BackgroundTasks,
     service: SessionStorageService = Depends(getSessionStorageService)
 ):
     metadata = UserMetadataDomain(
-        user_agent=request.metadata.userAgent,
-        devices_width=request.metadata.devicesWidth,
-        devices_length=request.metadata.devicesLength,
-        ip_address=request.metadata.ipAddress,
-        region=request.metadata.region,
-        lang=request.metadata.lang
+        user_agent=createRequest.metadata.userAgent,
+        devices_width=createRequest.metadata.devicesWidth,
+        devices_length=createRequest.metadata.devicesLength,
+        ip_address=createRequest.metadata.ipAddress,
+        region=createRequest.metadata.region,
+        lang=createRequest.metadata.lang
     )
 
     session = await service.create_session(
-        user_id=request.userId,
+        user_id=createRequest.userId,
         metadata=metadata,
         background_tasks=backgroundTasks,
-        session_duration_days=request.sessionDurationDays
+        session_duration_days=createRequest.sessionDurationDays
     )
 
     return _mapTokenResponse(session)
 
 
 @router.post("/validate", response_model=SessionValidationResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def validateSession(
-    request: ValidateSessionRequest,
+    request: Request,
+    validateRequest: ValidateSessionRequest,
     service: SessionStorageService = Depends(getSessionStorageService)
 ):
     metadata = UserMetadataDomain(
-        user_agent=request.metadata.userAgent,
-        devices_width=request.metadata.devicesWidth,
-        devices_length=request.metadata.devicesLength,
-        ip_address=request.metadata.ipAddress,
-        region=request.metadata.region,
-        lang=request.metadata.lang
+        user_agent=validateRequest.metadata.userAgent,
+        devices_width=validateRequest.metadata.devicesWidth,
+        devices_length=validateRequest.metadata.devicesLength,
+        ip_address=validateRequest.metadata.ipAddress,
+        region=validateRequest.metadata.region,
+        lang=validateRequest.metadata.lang
     )
 
     session = await service.validate_session(
-        active_token=request.activeToken,
+        active_token=validateRequest.activeToken,
         incoming_metadata=metadata
     )
 
@@ -115,13 +121,15 @@ async def validateSession(
 
 
 @router.post("/refresh", response_model=SessionTokenResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def refreshSession(
-    request: RefreshSessionRequest,
+    request: Request,
+    refreshRequest: RefreshSessionRequest,
     backgroundTasks: BackgroundTasks,
     service: SessionStorageService = Depends(getSessionStorageService)
 ):
     session = await service.refresh_session(
-        refresh_token=request.refreshToken,
+        refresh_token=refreshRequest.refreshToken,
         background_tasks=backgroundTasks
     )
 
@@ -135,7 +143,9 @@ async def refreshSession(
 
 
 @router.delete("/{sid}", response_model=SessionRevokeResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def revokeSession(
+    request: Request,
     sid: UUID,
     backgroundTasks: BackgroundTasks,
     service: SessionStorageService = Depends(getSessionStorageService),
@@ -159,7 +169,9 @@ async def revokeSession(
 
 
 @router.delete("/user/{userId}", response_model=SessionRevokeAllResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def revokeAllUserSessions(
+    request: Request,
     userId: UUID,
     backgroundTasks: BackgroundTasks,
     service: SessionStorageService = Depends(getSessionStorageService),
@@ -178,7 +190,9 @@ async def revokeAllUserSessions(
 
 
 @router.get("/{sid}", response_model=SessionResponse)
+@limiter.limit(security_config.RATE_LIMIT_DEFAULT)
 async def getSessionById(
+    request: Request,
     sid: UUID,
     service: SessionStorageService = Depends(getSessionStorageService),
     credentials: HTTPAuthorizationCredentials = Security(security)
