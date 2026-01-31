@@ -1,15 +1,15 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from application.OtpApplication.schema.OtpResponseSchema import OtpResponse, VerifyOtpResponse
+from application.OtpApplication.schema.OtpRequestSchema import SendOtpRequest, VerifyOtpRequest
 from application.OtpApplication.Dependencies import getOtpService
 from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
+from uuid import UUID
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
     from infrastructure.services.OtpService import OtpService
-    from application.OtpApplication.schema.OtpRequestSchema import SendOtpRequest, VerifyOtpRequest
-    from uuid import UUID
 
 router = APIRouter(prefix="/otp", tags=["OTP"])
 

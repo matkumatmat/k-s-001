@@ -8,19 +8,19 @@ from application.SessionApplication.schema.SessionResponseSchema import (
     SessionRevokeAllResponse,
     MetadataResponse
 )
+from application.SessionApplication.schema.SessionRequestSchema import (
+    CreateSessionRequest,
+    ValidateSessionRequest,
+    RefreshSessionRequest
+)
 from application.SessionApplication.Dependencies import getSessionStorageService
 from domain.client.UserMetadataDomain import UserMetadataDomain
+from uuid import UUID
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from domain.client.UserSessionDomain import UserSessionDomain
     from infrastructure.services.SessionStorageService import SessionStorageService
-    from application.SessionApplication.schema.SessionRequestSchema import (
-        CreateSessionRequest,
-        ValidateSessionRequest,
-        RefreshSessionRequest
-    )
-    from uuid import UUID
 
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
 

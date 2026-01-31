@@ -5,6 +5,10 @@ from application.RegistrationApplication.schema.RegistrationResponseSchema impor
     VerifyRegistrationResponse,
     RegistrationOtpInfo
 )
+from application.RegistrationApplication.schema.RegistrationRequestSchema import (
+    RegisterRequest,
+    VerifyRegistrationRequest
+)
 from application.Dependencies import getAuthenticationService
 from domain.management.ValueObject import AuthenticationProvider
 from domain.client.UserMetadataDomain import UserMetadataDomain
@@ -12,10 +16,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrastructure.services.AuthenticationService import AuthenticationService
-    from application.RegistrationApplication.schema.RegistrationRequestSchema import (
-        RegisterRequest,
-        VerifyRegistrationRequest
-    )
 
 router = APIRouter(prefix="/registration", tags=["Registration"])
 

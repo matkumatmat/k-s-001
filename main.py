@@ -73,7 +73,6 @@ app.include_router(otp_router)
 app.include_router(registration_router)
 app.include_router(login_router)
 
-
 @app.get("/health")
 async def healthCheck():
     return {

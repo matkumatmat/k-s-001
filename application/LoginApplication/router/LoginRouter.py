@@ -1,13 +1,13 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Response
 from application.LoginApplication.schema.LoginResponseSchema import LoginResponse
+from application.LoginApplication.schema.LoginRequestSchema import LoginRequest, TokenLoginRequest
 from application.Dependencies import getAuthenticationService
 from domain.client.UserMetadataDomain import UserMetadataDomain
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrastructure.services.AuthenticationService import AuthenticationService
-    from application.LoginApplication.schema.LoginRequestSchema import LoginRequest, TokenLoginRequest
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
