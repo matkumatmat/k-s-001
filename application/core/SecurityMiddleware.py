@@ -9,8 +9,7 @@ from secure import (
     CacheControl,
 )
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+from fastapi import Request, Response
 
 # Configure Secure Headers
 # tailored for an API service
