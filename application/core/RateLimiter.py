@@ -1,7 +1,7 @@
 from __future__ import annotations
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from starlette.requests import Request
+from fastapi import Request
 from infrastructure.persistence.redis.connection import REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
 from application.core.SecurityConfig import security_config
 
