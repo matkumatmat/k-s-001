@@ -1,5 +1,6 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from application.SessionApplication.schema.SessionResponseSchema import (
     SessionResponse,
     SessionTokenResponse,
@@ -21,6 +22,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from domain.client.UserSessionDomain import UserSessionDomain
     from infrastructure.services.SessionStorageService import SessionStorageService
+
+security = HTTPBearer()
 
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
 
@@ -135,7 +138,8 @@ async def refreshSession(
 async def revokeSession(
     sid: UUID,
     backgroundTasks: BackgroundTasks,
-    service: SessionStorageService = Depends(getSessionStorageService)
+    service: SessionStorageService = Depends(getSessionStorageService),
+    credentials: HTTPAuthorizationCredentials = Security(security)
 ):
     success = await service.revoke_session(
         sid=sid,
@@ -158,7 +162,8 @@ async def revokeSession(
 async def revokeAllUserSessions(
     userId: UUID,
     backgroundTasks: BackgroundTasks,
-    service: SessionStorageService = Depends(getSessionStorageService)
+    service: SessionStorageService = Depends(getSessionStorageService),
+    credentials: HTTPAuthorizationCredentials = Security(security)
 ):
     count = await service.revoke_all_user_sessions(
         user_id=userId,
@@ -175,7 +180,8 @@ async def revokeAllUserSessions(
 @router.get("/{sid}", response_model=SessionResponse)
 async def getSessionById(
     sid: UUID,
-    service: SessionStorageService = Depends(getSessionStorageService)
+    service: SessionStorageService = Depends(getSessionStorageService),
+    credentials: HTTPAuthorizationCredentials = Security(security)
 ):
     session = await service.get_session_by_id(sid)
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from application.OtpApplication.schema.OtpResponseSchema import OtpResponse, VerifyOtpResponse
 from application.OtpApplication.schema.OtpRequestSchema import SendOtpRequest, VerifyOtpRequest
 from application.OtpApplication.Dependencies import getOtpService
@@ -10,6 +11,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
     from infrastructure.services.OtpService import OtpService
+
+security = HTTPBearer()
 
 router = APIRouter(prefix="/otp", tags=["OTP"])
 
@@ -83,7 +86,8 @@ async def verifyOtp(
 @router.get("/{sid}", response_model=OtpResponse)
 async def getOtpById(
     sid: UUID,
-    service: OtpService = Depends(getOtpService)
+    service: OtpService = Depends(getOtpService),
+    credentials: HTTPAuthorizationCredentials = Security(security)
 ):
     otp = await service.getOtpById(sid)
 
