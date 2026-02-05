@@ -1,7 +1,10 @@
 from __future__ import annotations
 import logging
 from infrastructure.messaging.IMessageProvider import IMessageProvider
-from domain.management.ValueObject import AuthenticationProvider
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.management.ValueObject import AuthenticationProvider
 
 logger = logging.getLogger(__name__)
 

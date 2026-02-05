@@ -1,12 +1,15 @@
 from __future__ import annotations
-from datetime import datetime, timezone
-from uuid import UUID
-from sqlalchemy import select, update, delete
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, UTC
+from sqlalchemy import select, update
 from domain.client.ISessionRepository import ISessionRepository
-from domain.client.UserSessionDomain import UserSessionDomain
 from infrastructure.persistence.postgresql.models.SessionModel import SessionModel
 from infrastructure.persistence.postgresql.mappers.SessionMapper import SessionMapper
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.client.UserSessionDomain import UserSessionDomain
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from uuid import UUID
 
 
 class PostgresSessionRepository(ISessionRepository):
@@ -23,7 +26,7 @@ class PostgresSessionRepository(ISessionRepository):
     async def get_by_id(self, sid: UUID) -> UserSessionDomain | None:
         stmt = select(SessionModel).where(
             SessionModel.sid == sid,
-            SessionModel.deleted == False
+            not SessionModel.deleted
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -34,7 +37,7 @@ class PostgresSessionRepository(ISessionRepository):
     async def get_by_user_id(self, user_id: UUID) -> list[UserSessionDomain]:
         stmt = select(SessionModel).where(
             SessionModel.user_id == user_id,
-            SessionModel.deleted == False
+            not SessionModel.deleted
         )
         result = await self.session.execute(stmt)
         models = result.scalars().all()
@@ -43,7 +46,7 @@ class PostgresSessionRepository(ISessionRepository):
     async def get_by_active_token(self, active_token: str) -> UserSessionDomain | None:
         stmt = select(SessionModel).where(
             SessionModel.active_token == active_token,
-            SessionModel.deleted == False
+            not SessionModel.deleted
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -54,7 +57,7 @@ class PostgresSessionRepository(ISessionRepository):
     async def get_by_refresh_token(self, refresh_token: str) -> UserSessionDomain | None:
         stmt = select(SessionModel).where(
             SessionModel.refresh_token == refresh_token,
-            SessionModel.deleted == False
+            not SessionModel.deleted
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -65,7 +68,7 @@ class PostgresSessionRepository(ISessionRepository):
     async def update(self, domain: UserSessionDomain) -> UserSessionDomain:
         stmt = select(SessionModel).where(
             SessionModel.sid == domain.sid,
-            SessionModel.deleted == False
+            not SessionModel.deleted
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -80,8 +83,8 @@ class PostgresSessionRepository(ISessionRepository):
     async def delete(self, sid: UUID) -> bool:
         stmt = (
             update(SessionModel)
-            .where(SessionModel.sid == sid, SessionModel.deleted == False)
-            .values(deleted=True, deleted_at=datetime.now(timezone.utc))
+            .where(SessionModel.sid == sid, not SessionModel.deleted)
+            .values(deleted=True, deleted_at=datetime.now(UTC))
         )
         result = await self.session.execute(stmt)
         await self.session.flush()
@@ -90,8 +93,8 @@ class PostgresSessionRepository(ISessionRepository):
     async def delete_all_by_user(self, user_id: UUID) -> int:
         stmt = (
             update(SessionModel)
-            .where(SessionModel.user_id == user_id, SessionModel.deleted == False)
-            .values(deleted=True, deleted_at=datetime.now(timezone.utc))
+            .where(SessionModel.user_id == user_id, not SessionModel.deleted)
+            .values(deleted=True, deleted_at=datetime.now(UTC))
         )
         result = await self.session.execute(stmt)
         await self.session.flush()
@@ -100,7 +103,7 @@ class PostgresSessionRepository(ISessionRepository):
     async def exists(self, sid: UUID) -> bool:
         stmt = select(SessionModel.sid).where(
             SessionModel.sid == sid,
-            SessionModel.deleted == False
+            not SessionModel.deleted
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none() is not None

@@ -1,8 +1,11 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from uuid import UUID
-from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
-from domain.management.ValueObject import AuthenticationOtpPurpose
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.management.ValueObject import AuthenticationOtpPurpose
+    from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
+    from uuid import UUID
 
 
 class IOtpRepository(ABC):

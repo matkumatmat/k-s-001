@@ -7,6 +7,7 @@ from sqlalchemy import text
 from application.SessionApplication.router.SessionRouter import router as session_router
 from application.OtpApplication.router.OtpRouter import router as otp_router
 from application.RegistrationApplication.router.RegistrationRouter import router as registration_router
+from application.LoginApplication.router.LoginRouter import router as login_router
 from infrastructure.persistence.redis.connection import RedisConnection
 from infrastructure.persistence.postgresql.connection import DatabaseConnection
 
@@ -70,7 +71,7 @@ app.add_middleware(
 app.include_router(session_router)
 app.include_router(otp_router)
 app.include_router(registration_router)
-
+app.include_router(login_router)
 
 @app.get("/health")
 async def healthCheck():

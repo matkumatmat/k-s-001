@@ -5,6 +5,7 @@ from sqlalchemy import String, Integer, DateTime, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from infrastructure.persistence.postgresql.models.SessionModel import Base
+from typing import TYPE_CHECKING
 
 
 class OtpModel(Base):

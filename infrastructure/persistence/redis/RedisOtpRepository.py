@@ -1,12 +1,15 @@
 from __future__ import annotations
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
-from redis.asyncio import Redis
 from domain.management.IOtpRepository import IOtpRepository
-from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
 from domain.management.OtpAuthenticationFactory import OtpAuthenticationFactory
 from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
+    from redis.asyncio import Redis
 
 
 class RedisOtpRepository(IOtpRepository):
@@ -117,7 +120,7 @@ class RedisOtpRepository(IOtpRepository):
         return otps
 
     async def getByUserIdAndPurpose(self, user_id: UUID, purpose: AuthenticationOtpPurpose) -> list[ManagementOtpDomain]:
-        keys = await self.redis.keys(f"otp:*")
+        keys = await self.redis.keys("otp:*")
         otps = []
         for key in keys:
             data = await self.redis.get(key)

@@ -1,11 +1,14 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, UTC, timedelta
+from datetime import datetime, UTC, timedelta
 import os
 from dotenv import load_dotenv #type: ignore
-from uuid import UUID
 
 from domain.management.ValueObject import AuthenticationOtpPurpose, AuthenticationProvider
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 load_dotenv()
 URL_PREFIX = os.getenv("OTP_URL_PREFIX")
@@ -25,8 +28,8 @@ class ManagementOtpDomain:
     merchant_id : UUID
     used: bool | None = None
     used_at: datetime | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     user_id : UUID | None = None
     identifier: str | None = None
     behaviour_logs: UUID | None = None
@@ -39,7 +42,7 @@ class ManagementOtpDomain:
     
     def is_expired(self, current_time: datetime | None = None) -> bool:
         if current_time is None:
-            current_time = datetime.now(timezone.utc)
+            current_time = datetime.now(UTC)
         return current_time > self.expired_at
     
     def mark_used(self, current_time: datetime) -> None :

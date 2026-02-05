@@ -1,11 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 import secrets
-from datetime import datetime
-from uuid import UUID
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from uuid import UUID
     from domain.management.ValueObject import AuthenticationProvider, AuthenticationRole
 @dataclass
 class UserDomain:
@@ -27,6 +26,7 @@ class UserDomain:
     actived_at: datetime | None = None
     verified: bool = False
     verified_at: datetime | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime | None = None
     deleted: bool = False
     deleted_at: datetime | None = None

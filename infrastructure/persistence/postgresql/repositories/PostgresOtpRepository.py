@@ -1,12 +1,15 @@
 from __future__ import annotations
-from uuid import UUID
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from domain.management.IOtpRepository import IOtpRepository
-from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
-from domain.management.ValueObject import AuthenticationOtpPurpose
 from infrastructure.persistence.postgresql.models.OtpModel import OtpModel
 from infrastructure.persistence.postgresql.mappers.OtpMapper import OtpMapper
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.management.ValueObject import AuthenticationOtpPurpose
+    from domain.management.OtpAuthenticationDomain import ManagementOtpDomain
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from uuid import UUID
 
 
 class PostgresOtpRepository(IOtpRepository):

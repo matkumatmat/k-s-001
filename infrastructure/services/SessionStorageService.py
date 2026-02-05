@@ -1,16 +1,15 @@
 from __future__ import annotations
 import logging
-from datetime import datetime, timezone
-from uuid import UUID
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING
-from domain.client.UserSessionDomain import UserSessionDomain
-from domain.client.UserMetadataDomain import UserMetadataDomain
 from domain.client.DeviceFingerprintVO import DeviceFingerprintVO
 from domain.client.UserSessionFactory import UserSessionFactory
-from infrastructure.persistence.redis.RedisSessionRepository import RedisSessionRepository
-from infrastructure.persistence.uow.IUnitOfWork import IUnitOfWork
 
 if TYPE_CHECKING:
+    from domain.client.UserMetadataDomain import UserMetadataDomain
+    from domain.client.UserSessionDomain import UserSessionDomain
+    from infrastructure.persistence.redis.RedisSessionRepository import RedisSessionRepository
+    from uuid import UUID
     from fastapi import BackgroundTasks
     
 logger = logging.getLogger(__name__)
@@ -81,7 +80,7 @@ class SessionStorageService:
             return None
 
         incoming_fingerprint = DeviceFingerprintVO.from_metadata(incoming_metadata)
-        current_time = datetime.now(timezone.utc)
+        current_time = datetime.now(UTC)
 
         if not session.is_valid_session(current_time, incoming_fingerprint):
             return None
@@ -101,7 +100,7 @@ class SessionStorageService:
         if session is None:
             return None
 
-        current_time = datetime.now(timezone.utc)
+        current_time = datetime.now(UTC)
         if not session.can_refresh(current_time):
             return None
 
@@ -147,7 +146,7 @@ class SessionStorageService:
 
     async def _warm_redis_cache(self, session: UserSessionDomain) -> None:
         try:
-            current_time = datetime.now(timezone.utc)
+            current_time = datetime.now(UTC)
             if session.is_active_session(current_time):
                 await self.redis_repo.create(session)
         except Exception as e:

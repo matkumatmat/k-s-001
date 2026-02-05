@@ -1,10 +1,15 @@
 from __future__ import annotations
-from sqlalchemy.ext.asyncio import AsyncSession
 from infrastructure.persistence.uow.IUnitOfWork import IUnitOfWork
 from infrastructure.persistence.postgresql.repositories.PostgresSessionRepository import PostgresSessionRepository
 from infrastructure.persistence.postgresql.repositories.PostgresOtpRepository import PostgresOtpRepository
-from domain.client.ISessionRepository import ISessionRepository
-from domain.management.IOtpRepository import IOtpRepository
+from infrastructure.persistence.postgresql.repositories.PostgresUserRepository import PostgresUserRepository
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.client.IUserRepository import IUserRepository
+    from domain.management.IOtpRepository import IOtpRepository
+    from domain.client.ISessionRepository import ISessionRepository
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class PostgresUnitOfWork(IUnitOfWork):
@@ -13,6 +18,7 @@ class PostgresUnitOfWork(IUnitOfWork):
         self._session = session
         self._sessions: ISessionRepository | None = None
         self._otps: IOtpRepository | None = None
+        self._users: IUserRepository | None = None
 
     @property
     def sessions(self) -> ISessionRepository:
@@ -25,6 +31,12 @@ class PostgresUnitOfWork(IUnitOfWork):
         if self._otps is None:
             self._otps = PostgresOtpRepository(self._session)
         return self._otps
+
+    @property
+    def users(self) -> IUserRepository:
+        if self._users is None:
+            self._users = PostgresUserRepository(self._session)
+        return self._users
 
     async def __aenter__(self):
         return self

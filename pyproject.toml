@@ -5,7 +5,11 @@ description = "authentication services for anything services"
 authors = ["matkumatmat <mamattewahyu@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "backend"}]
+packages = [
+    {include = "application"},
+    {include = "domain"},
+    {include = "infrastructure"}
+]
 
 [tool.poetry.dependencies]
 python = ">=3.14"
@@ -26,6 +30,7 @@ mypy = ">=1.19.1,<2.0.0"
 python-dotenv = ">=1.2.1,<2.0.0"
 uvicorn = ">=0.40.0,<0.41.0"
 sqlalchemy = ">=2.0.0,<3.0.0"
+pytest = "^9.0.2"
 
 [build-system]
 requires = ["poetry-core>=2.0.0"]
@@ -59,11 +64,15 @@ ignore = [
     "I001",
     "UP043",
     "W293",
+    "N802",
+    "N999",
+    "N815",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "**/tests/**" = ["S101"]
+"scripts/init_db.py" = ["F401"]
 "**/persistence/*Model.py" = ["E711", "E712"]
 "**/shared/Exceptions.py" = ["N818"]
 "alembic/env.py" = ["E402", "F401", "I001"]
@@ -116,14 +125,6 @@ testpaths = ["app/tests"]
 python_files = ["tests_*.py", "*_tests.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = [
-    "-v",
-    "--strict-markers",
-    "--strict-config",
-    "--cov=app",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-]
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",

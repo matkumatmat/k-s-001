@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from domain.client.ISessionRepository import ISessionRepository
     from domain.management.IOtpRepository import IOtpRepository
+    from domain.client.IUserRepository import IUserRepository
 
 
 class IUnitOfWork(ABC):
@@ -17,6 +18,11 @@ class IUnitOfWork(ABC):
     @property
     @abstractmethod
     def otps(self) -> IOtpRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def users(self) -> IUserRepository:
         pass
 
     @abstractmethod

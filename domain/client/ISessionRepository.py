@@ -1,7 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from uuid import UUID
-from domain.client.UserSessionDomain import UserSessionDomain
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from domain.client.UserSessionDomain import UserSessionDomain
+    from uuid import UUID
 
 
 class ISessionRepository(ABC):
